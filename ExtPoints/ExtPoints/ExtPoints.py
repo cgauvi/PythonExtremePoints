@@ -8,7 +8,87 @@ import math as m
 import numpy as np
 from scipy.special import comb
 
- 
+
+
+def convertCodifiedToNumeric(codifiedList):
+    '''
+    Convert the points codified with  {1,2,3,4} to the actual varrho value
+    '''
+    dim         = len( codifiedList[0,:] )
+    numPoints   = len( codifiedList[:,0] )
+    epsilon =1 
+    
+    numericList = np.zeros((numPoints,dim))
+    
+    for p in range(numPoints):
+        for i in range(dim):
+            if codifiedList[p,i] == 0 : 
+                numericList[p,i] = -    m.sqrt(dim*epsilon)
+            elif codifiedList[p,i] == 1 : 
+                numericList[p,i] =      m.sqrt(dim*epsilon)
+            elif codifiedList[p,i] == 2 : 
+                numericList[p,i] = -    m.sqrt(dim*epsilon) * (  m.sqrt(dim) - m.floor( m.sqrt(dim)) )
+            elif codifiedList[p,i] == 3 : 
+                numericList[p,i] =      m.sqrt(dim*epsilon) * (  m.sqrt(dim) - m.floor( m.sqrt(dim)) )
+            else :          #codifiedList[p,i] == 4 
+                numericList[p,i] = 0
+                
+                
+    return numericList
+                
+                
+                
+                
+def checkIfInBudgetedSet(codifiedList):
+    '''
+    Check if the generated point actually respects the norm 1 and norm inf constraints
+    '''
+    
+    tolerance = m.pow(10, -6)
+    
+    numericList     =  convertCodifiedToNumeric(codifiedList)
+    dim             = len(numericList[0,:])
+    numPoints       = len( numericList[:,0] )
+    epsilon         = 1
+    
+    numPointsInFacets = 0
+     
+    #First check the norm inf constraints
+    #|x_i| <= m.sqrt( dim * epsilon) 
+    for p in range(numPoints):
+        oneOfNormInfBinding = 0
+        for i in range(dim):
+            if m.fabs( numericList[p,i] ) > m.sqrt( dim * epsilon) + tolerance :
+                print("\nError, point{}, abs value of element: {} > {} (norm inf violated)\n".format(p,
+                                                               m.fabs( numericList[p,i] ), 
+                                                               m.sqrt( dim * epsilon))      \
+                      )
+                return 0
+            
+            if m.fabs( numericList[p,i] ) == m.sqrt( dim * epsilon):
+                oneOfNormInfBinding =1 
+                
+        if oneOfNormInfBinding:
+            numPointsInFacets += 1
+
+    #Next, check the norm 1 constraint holds
+    #sum_i |x_i| <= dim * m.sqrt(epsilon) 
+    for p in range(numPoints):
+        partialSum =0
+        for i in range(dim):
+            partialSum += m.fabs( numericList[p,i] ) 
+        if partialSum > dim * m.sqrt(epsilon) + tolerance:
+            print("\nError, point{},sum of abs values: {} > {} (norm 1 violated)\n".format(p,
+                                                                                           partialSum, 
+                                                                                           dim * m.sqrt(epsilon))      \
+                  )
+            return 0
+
+    print("Ok all the points are within the budget (up to tolerance {})\n".format(tolerance));
+    print("There are {} points that lie in a facet of the polyhedron out of the total {} \n".format(numPointsInFacets,numPoints) );
+    
+    
+    return 1
 
 def returnSubList(myList,mySize):
     '''
@@ -24,6 +104,7 @@ def returnSubList(myList,mySize):
                 yield (myList[i],) + next
 
     
+   
    
    
 
@@ -75,7 +156,7 @@ def createVectorCodifiedExtPoints(listOfListsAtBounds, numCols):
     print("Number of ext points: {}".format(codifiedListCount) )
     
     return codifiedList
-
+ 
 
 def printAMPLFormat(codExtPoints):
     '''
@@ -84,7 +165,7 @@ def printAMPLFormat(codExtPoints):
     numRows= len( codExtPoints[:,0] )
     numCols= len( codExtPoints[0,:] )
     
-    outFile = open("C:/Users/charles/GIT/ExtPointsV2GIT/ExtPointsV2/ExtPointsV2/outputFil.txt", 'w')
+    outFile = open("C:/Users/charles/git/ExtPoints/ExtPoints/ExtPoints/outputFil.txt", 'w')
     
     
     outFile.write('param p_codifiedMatrixExtPoints : 1  2 3 4 5 6 7   := \n' );
@@ -120,7 +201,11 @@ if __name__ == '__main__':
     codExtPoints=createVectorCodifiedExtPoints(lOfL, dim)
   
   
-    #print the vector
+    #Print the vector
     printAMPLFormat(codExtPoints)
+    
+    
+    #Check if the points generated are really within the budgeted uncertainty set
+    checkIfInBudgetedSet(codExtPoints)
     
      
